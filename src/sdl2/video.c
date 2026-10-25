@@ -18,6 +18,10 @@
 #include "../video.h"
 
 #include <math.h>
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #include <SDL.h>
 #include <stdlib.h>
 
@@ -170,6 +174,10 @@ void render()
 void present()
 {
     SDL_RenderPresent(gRenderer);
+#ifdef __EMSCRIPTEN__
+    // The game loop never returns, so yield to the browser each frame (needs -sASYNCIFY).
+    emscripten_sleep(0);
+#endif
 }
 
 void destroyVideo()

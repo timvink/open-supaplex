@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supaplex</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #ccc; font-family: sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; }
+  /* Keep SDL's drawing buffer as is and only scale it with CSS, so fullscreen never resizes the GL canvas. */
+  #canvas { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; outline: none; display: block; }
+  #status { position: fixed; top: 45%; width: 100%; text-align: center; font-size: 20px; }
+  #fs { position: fixed; top: 8px; right: 8px; z-index: 1; opacity: .35; background: #222; color: #ddd; border: 1px solid #555; padding: 4px 10px; cursor: pointer; }
+  #fs:hover { opacity: 1; }
+  :fullscreen #fs { display: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <div id="status">Loading…</div>
+  <button id="fs" title="Fullscreen (F)">Fullscreen</button>
+</div>
+<script>
+  var stage = document.getElementById('stage');
+  var canvas = document.getElementById('canvas');
+  var statusEl = document.getElementById('status');
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else stage.requestFullscreen().catch(function () {});
+    canvas.focus();
+  }
+  document.getElementById('fs').addEventListener('click', toggleFullscreen);
+  // F toggles browser fullscreen; capture phase so SDL doesn't swallow it first.
+  window.addEventListener('keydown', function (e) {
+    if (e.code === 'KeyF' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) { toggleFullscreen(); e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  canvas.addEventListener('click', function () { canvas.focus(); });
+
+  canvas.addEventListener('webglcontextlost', function (e) { statusEl.textContent = 'Graphics context lost, reload the page.'; e.preventDefault(); });
+
+  var Module = {
+    canvas: canvas,
+    print: function () { console.log.apply(console, arguments); },
+    printErr: function () { console.warn.apply(console, arguments); },
+    setStatus: function (text) {
+      // Hide the status text once the game runs instead of leaving "Running..." over the canvas.
+      if (/^Running/.test(text)) text = '';
+      var m = text && text.match(/\((\d+(?:\.\d+)?)\/(\d+)\)/);
+      statusEl.textContent = m ? 'Loading… ' + Math.round(100 * m[1] / m[2]) + '%' : text;
+      statusEl.style.display = text ? 'block' : 'none';
+    },
+    monitorRunDependencies: function (left) { if (!left) Module.setStatus(''); }
+  };
+  window.onerror = function () { statusEl.style.display = 'block'; statusEl.textContent = 'Something went wrong, see the JavaScript console.'; };
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>
