@@ -5727,35 +5727,41 @@ void updateUserInput() // sub_4A1BF   proc near       ; CODE XREF: handleGameUse
 
     gCurrentUserInput = UserInputNone;
 
-    if (isUpButtonPressed())
-    {
-        // loc_4A1CF:              ; CODE XREF: updateUserInput+7j
-        gCurrentUserInput = UserInputUp;
-        directionKeyWasPressed = 1;
-    }
+    // The original checks up, left, down, right and the last held one wins, so with two
+    // directions held right beats left and down beats left. Instead, the direction pressed
+    // most recently wins; the original order only breaks ties between keys that went down
+    // in the same frame. Demos record the resolved input, so playback is unaffected.
+    static uint32_t pressCounter = 0;
+    static uint32_t pressedAt[4] = { 0, 0, 0, 0 }; // up, left, down, right; 0 = not held
+    const uint8_t isPressed[4] = {
+        isUpButtonPressed(),
+        isLeftButtonPressed(),
+        isDownButtonPressed(),
+        isRightButtonPressed(),
+    };
+    const UserInput directionInputs[4] = { UserInputUp, UserInputLeft, UserInputDown, UserInputRight };
 
-    // loc_4A1D6:              ; CODE XREF: updateUserInput+Ej
-    if (isLeftButtonPressed())
+    uint32_t newestPress = 0;
+    for (int i = 0; i < 4; ++i)
     {
-        // loc_4A1E4:              ; CODE XREF: updateUserInput+1Cj
-        gCurrentUserInput = UserInputLeft;
-        directionKeyWasPressed = 1;
-    }
+        if (isPressed[i] == 0)
+        {
+            pressedAt[i] = 0;
+            continue;
+        }
 
-    // loc_4A1EB:              ; CODE XREF: updateUserInput+23j
-    if (isDownButtonPressed())
-    {
-        // loc_4A1F9:              ; CODE XREF: updateUserInput+31j
-        gCurrentUserInput = UserInputDown;
-        directionKeyWasPressed = 1;
-    }
+        if (pressedAt[i] == 0)
+        {
+            pressedAt[i] = ++pressCounter;
+        }
 
-    // loc_4A200:              ; CODE XREF: updateUserInput+38j
-    if (isRightButtonPressed())
-    {
-        // loc_4A20E:              ; CODE XREF: updateUserInput+46j
-        gCurrentUserInput = UserInputRight;
-        directionKeyWasPressed = 1;
+        // >= keeps the original order (later in the list wins) for same-frame presses.
+        if (pressedAt[i] >= newestPress)
+        {
+            newestPress = pressedAt[i];
+            gCurrentUserInput = directionInputs[i];
+            directionKeyWasPressed = 1;
+        }
     }
 
     // loc_4A215:              ; CODE XREF: updateUserInput+4Dj
