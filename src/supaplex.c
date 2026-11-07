@@ -5729,33 +5729,54 @@ void updateUserInput() // sub_4A1BF   proc near       ; CODE XREF: handleGameUse
 
     // The original checks up, left, down, right and the last held one wins, so with two
     // directions held right beats left and down beats left. Instead, the direction pressed
-    // most recently wins; the original order only breaks ties between keys that went down
-    // in the same frame. Demos record the resolved input, so playback is unaffected.
-    static uint32_t pressCounter = 0;
-    static uint32_t pressedAt[4] = { 0, 0, 0, 0 }; // up, left, down, right; 0 = not held
+    // most recently wins. Keys that went down in the same frame (a D-pad diagonal, or two
+    // fingers landing together) share a timestamp, and the tie goes to the horizontal key:
+    // the original order would let down beat left but right beat down, so a blocked
+    // down+left diagonal kept Murphy still while down+right moved him. Within an axis the
+    // original order still applies (down beats up, right beats left).
+    // Demos record the resolved input, so playback is unaffected.
+    static uint32_t pressFrame = 0;
+    static uint32_t pressedAt[4] = { 0, 0, 0, 0 }; // up, down, left, right; 0 = not held
     const uint8_t isPressed[4] = {
         isUpButtonPressed(),
-        isLeftButtonPressed(),
         isDownButtonPressed(),
+        isLeftButtonPressed(),
         isRightButtonPressed(),
     };
-    const UserInput directionInputs[4] = { UserInputUp, UserInputLeft, UserInputDown, UserInputRight };
+    const UserInput directionInputs[4] = { UserInputUp, UserInputDown, UserInputLeft, UserInputRight };
+
+    uint8_t hasNewPress = 0;
+    for (int i = 0; i < 4; ++i)
+    {
+        if (isPressed[i] == 0)
+        {
+            pressedAt[i] = 0;
+        }
+        else if (pressedAt[i] == 0)
+        {
+            hasNewPress = 1;
+        }
+    }
+
+    if (hasNewPress)
+    {
+        ++pressFrame;
+    }
 
     uint32_t newestPress = 0;
     for (int i = 0; i < 4; ++i)
     {
         if (isPressed[i] == 0)
         {
-            pressedAt[i] = 0;
             continue;
         }
 
         if (pressedAt[i] == 0)
         {
-            pressedAt[i] = ++pressCounter;
+            pressedAt[i] = pressFrame;
         }
 
-        // >= keeps the original order (later in the list wins) for same-frame presses.
+        // >= lets the later direction in the list win a same-frame tie.
         if (pressedAt[i] >= newestPress)
         {
             newestPress = pressedAt[i];

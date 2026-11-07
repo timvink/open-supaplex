@@ -177,6 +177,20 @@ Cases exercise the 127/128-hour boundary and the original signed-byte ordering o
 table unchanged for a slower player. Original `sub_4D1B6` uses signed `jl` comparisons for all three time fields;
 the stored/displayed byte values remain unsigned.
 
+`input-direction-tests` feeds the held direction keys in `regressions/input-direction-solves/*.csv`
+to `updateUserInput` one frame per row and checks the resolved input. This covers an OpenSupaplex
+change, not original behavior: the most recently pressed direction wins over older held ones.
+
+- `same-frame-diagonals.csv` presses two directions in the same frame. The horizontal direction
+  must win, so down+left resolves to left just as down+right resolves to right. With the original
+  up/left/down/right order, down beat left but right beat down, so a blocked down+left diagonal
+  kept Murphy still.
+- `most-recent-wins-control.csv` presses directions in separate frames, verifying that the newer
+  key wins and that releasing it returns control to the key still held.
+
+The columns are frame, up, down, left, right (1 = held), and the expected input
+(`none`, `up`, `down`, `left` or `right`).
+
 ## "Failed" solutions
 
 …some of these solutions don't seem to be solutions at all in the original game with the SpeedFix v6.3 ([the last official
